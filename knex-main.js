@@ -1,5 +1,7 @@
-const { newEnforcer, Model, StringAdapter, KnexAdapter } = require('casbin')
-
+const { newEnforcer, Model, StringAdapter } = require('casbin')
+const Knex = require('knex')
+const casbin = require('casbin');
+const { KnexAdapter } = require('casbin-knex-adapter');
 
 async function start() {
 
@@ -38,16 +40,21 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
 g = _, _
 `)
 
-    let p =`p, alice, data1, read
-p, bob, data2, write
-p, bob, data2, read
-p, bob, data3, write
-p, role_admin, data1, read
-g, bob, role_admin
-`
-    let sa = new StringAdapter(p)
-  const e = await newEnforcer(m, sa);
+  const knex = require('knex')({
+    client: 'pg',
+    connection: {
+      host : '192.168.40.129',
+      port : 5432,
+      user : 'postgres',
+      password : 'mysecretpassword',
+      database : 'casbin'
+    }
+  });
 
+  const adapter = await KnexAdapter.newAdapter(knex, {tableName: 'casbin_rule'});
+  const e = await newEnforcer(m, adapter);
+
+  await e.loadPolicy();
   let sub = 'alice'; // 想要访问资源的用户
   const obj = 'data1'; // 将要被访问的资源
   const act = 'read'; // 用户对资源进行的操作
